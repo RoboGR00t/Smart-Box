@@ -1,0 +1,157 @@
+#include <Arduino.h>
+#include <WebSocketsServer.h>
+#include <ESP8266WebServer.h>
+#include <WiFiManager.h>
+// #include "../lib/functions.h"
+
+
+/* NUMBER OF CONTROLED RELAYS */
+#define RELAYS 1
+/**/
+
+
+/* CREATE WEB SERVER OBJECT */
+ESP8266WebServer server(80);
+/**/
+
+/* CREATE WEB SOCKET SERVER OBJECT*/
+WebSocketsServer socket = WebSocketsServer(88);
+/**/
+
+/* RELAY PINS VALUES AND INITIALIZE */
+int BUTTONS_VAL[RELAYS] = {1};
+/**/
+
+/* RELAY PINS */
+const int BUTTONS[RELAYS] = {0};
+/**/
+
+/* WEB PAGE*/
+const char webpage[] PROGMEM =
+R"=====(
+
+  <!DOCTYPE html>
+  <html lang="en" dir="ltr">
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+      <title>Home.io</title>
+
+      <script>
+
+        InitWebSocket()
+        function InitWebSocket(){
+          websock = new WebSocket('ws://'+window.location.hostname+':88/');
+          websock.onmessage = function(evt){
+
+            var received_data = evt.data.split(' ');
+            var button = received_data[1];
+            var value = received_data[0];
+            document.getElementById(button).innerHTML = value+' '+button;
+
+          } // end of onmessage
+        } // end off init
+
+        function button(id){
+          if(document.getElementById(id).innerHTML === '1 0'){
+            msg = '0 0';
+          }
+          else if(document.getElementById(id).innerHTML === '0 0'){
+            msg = '1 0';
+          }
+          websock.send(msg);
+        }
+
+      </script>
+
+    </head>
+    <body>
+      <h1> SMART BOX UNDER CONSTRACTION </h1>
+      <a id="0" onclick='button(0)'></a>
+    </body>
+  </html>
+
+
+)=====";
+
+void event(uint8_t num, WStype_t type, uint8_t * payload, size_t welength) {
+
+  String msg = (const char*)  payload;
+  Serial.print("MESSAGE : ");
+  Serial.println(msg);
+
+  if(type == WStype_TEXT){
+    byte separator = msg.indexOf(' ');
+    String value = msg.substring(0,separator);
+    String button = msg.substring(separator+1);
+    Serial.print("BUTTON : ");
+    Serial.println(button);
+    Serial.print("VALUE : ");
+    Serial.println(value);
+    Serial.println(" ");
+
+    BUTTONS_VAL[button.toInt()] = value.toInt();
+
+  }
+
+}
+
+void website(){
+  server.send(200, "text/html", webpage);
+}
+
+void setup() {
+  Serial.begin(115200);
+
+  /* INITIALIZE ALL BUTTONS AS OUTPUTS */
+  for (unsigned int i = 0; i < RELAYS; i++) {
+    pinMode(BUTTONS[i], OUTPUT);
+  }
+  /**/
+
+  /* RESET WIFI PASSWORD */
+  // WiFi.disconnect();
+  // delay(1000);
+  /**/
+
+  /* START WIFI MANAGER FOR CONNECTING TO WIFI*/
+  WiFiManager wifiManager;
+  wifiManager.autoConnect("Smart Box","Smart Box");
+  /**/
+
+  /* PRINT LOCAL IP ADDRESS AND START WEB SERVER */
+  Serial.println("");
+  Serial.println("WIFI CONNECTED.");
+  Serial.print("IP ADDRESS: ");
+  Serial.println(WiFi.localIP());
+
+  WiFi.mode(WIFI_STA);
+  Serial.print(" START WEB SERVER ");
+  server.on("/",website);
+  server.begin();
+  /**/
+
+  /* START WEB SOCKET SERVER */
+  socket.begin();
+  socket.onEvent(event);
+  /**/
+
+}
+
+void loop(){
+  for (unsigned int i = 0; i < RELAYS; i++) {
+
+    socket.loop();
+    server.handleClient();
+
+
+    if( BUTTONS_VAL[i] == 1){
+      digitalWrite(BUTTONS[i], LOW);
+    }
+    else{
+      digitalWrite(BUTTONS[i],HIGH);
+    }
+
+    socket.broadcastTXT(String(BUTTONS_VAL[i])+' '+String(i));
+  }
+}

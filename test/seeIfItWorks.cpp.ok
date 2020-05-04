@@ -1,0 +1,101 @@
+#include <Arduino.h>
+#include <WebSocketsServer.h>
+#include <ESP8266WebServer.h>
+#include <WiFiManager.h>
+
+
+ESP8266WebServer server(80);
+WebSocketsServer socket = WebSocketsServer(81);
+
+const char* ssid = "conn-x85d8e0";
+const char* password = "14608085d8e0";
+
+const char webpage[] PROGMEM =
+R"=====(
+  <!DOCTYPE html>
+  <html lang="en" dir="ltr">
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+      <title>SOCKETS</title>
+      <script>
+        var Socket = new WebSocket('ws://' + window.location.hostname + ':81/');
+
+        function init()
+        {
+          Socket.onmessage = function(event) { processReceivedCommand(event); };
+        }
+
+        function processReceivedCommand(evt)
+        {
+          console.log(evt);
+        }
+
+        function send(){
+          Socket.send('0 1');
+        }
+
+      </script>
+    </head>
+    <body>
+      <h1>SOCKETS</h1>
+      <h3 id="btn0" >BUTTON</h3>
+      <a onclick='send()'>SEND</a>
+    </body>
+)=====";
+
+
+
+void event(uint8_t num, WStype_t type, uint8_t * payload, size_t welength) {
+
+  String msg = (const char*)  payload;
+  Serial.print("MESSAGE : ");
+  Serial.println(msg);
+
+  if(type == WStype_TEXT){
+    byte separator = msg.indexOf(' ');
+    String value = msg.substring(0,separator);
+    String button = msg.substring(separator+1);
+    Serial.print("BUTTON : ");
+    Serial.println(button);
+    Serial.print("VALUE : ");
+    Serial.println(value);
+    Serial.println(" ");
+  }
+
+}
+
+void setup(){
+
+  Serial.begin(115200);
+  WiFi.begin(ssid, password);
+  Serial.println("");
+
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+   }
+
+    Serial.println("");
+    Serial.print("Connected to ");
+    Serial.println(ssid);
+    Serial.print("IP address: ");
+    Serial.println(WiFi.localIP());
+
+    server.on("/", [](){
+      server.send(200, "text/html", webpage);
+    });
+
+    server.begin();
+
+    socket.begin();
+    socket.onEvent(event);
+
+}
+
+void loop(){
+  socket.loop();
+  server.handleClient();
+  socket.broadcastTXT("0 1");
+
+}

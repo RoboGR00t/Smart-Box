@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <title>Home.io</title>
+
+    <script>
+
+    window.onload=function(){ // Trigger when the page is ready
+      //Set change event
+      document.getElementById('Confirmation').addEventListener('change', Confirm, false);
+    }
+
+    function Confirm(){
+    var Confirmation=document.getElementById('Confirmation').checked;
+    var Message;
+    if(Confirmation){
+      Message="Confirmed";
+    }else{
+      Message="Not Confirmed"
+    }
+    document.getElementById('Result').innerHTML=Message;
+    }
+
+
+
+    </script>
+
+  </head>
+  <body>
+     <!-- <a href="#" id="btn" onclick='button()'></a> -->
+    <!-- <input type="checkbox" id="btn" onclick='button()'> -->
+    <input type="checkbox" id="Confirmation" />
+    <span id="Result">Not Confirmed</span
+
+  </body>
+</html>
+
+<!-- JSON[i] = "{\"SWITCH_"+String(i)+"\":\""  + JSON_PARAM + "\"}";
+Serial.println(JSON[i]); -->
+
+
+
+
+
+
+if(BUTTONS_VAL[i] == true) JSON_PARAM = "ON";
+JSON = json_update(i,JSON_PARAM);
+// Serial.println(JSON);
+webSocket.broadcastTXT(JSON);

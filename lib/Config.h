@@ -1,0 +1,11 @@
+/* NUMBER OF CONTROLED RELAYS */
+const int RELAYS = 4;
+/**/
+
+/* RELAY PINS VALUES AND INITIALIZE */
+int BUTTONS_VAL[RELAYS] = {0,0,0,0};
+/**/
+
+/* RELAY PINS */
+const int BUTTONS[RELAYS] = {14,12,13,15};
+/**/

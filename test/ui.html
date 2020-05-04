@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <title>Home.io</title>
+
+    <script>
+
+      window.onload=function(){ // Trigger when the page is ready
+        //Set change event
+        document.getElementById('btn').addEventListener('change', Confirm, false);
+      }
+
+      InitWebSocket()
+      function InitWebSocket(){
+        websock = new WebSocket('ws://'+window.location.hostname+':88/');
+        websock.onmessage = function(evt){
+          JSONobj = JSON.parse(evt.data);
+          document.getElementById('btn').innerHTML = JSONobj.LEDonoff;
+
+          if(JSONobj.LEDonoff == 'ON'){
+            document.getElementById('btn').style.background = 'FFA200';
+          }
+          else{
+            document.getElementById('btn').style.background = 'FFA200';
+          }
+        } // end of onmessage
+      } // end off init
+
+      function Confirm(){
+        var Confirmation=document.getElementById('btn').checked;
+
+        if(Confirmation){
+          btn = 'LEDonoff=ON';
+
+        }else{
+          btn = 'LEDonoff=OFF';
+
+        }
+        websock.send(btn);
+
+      }
+
+
+    </script>
+
+  </head>
+  <body>
+    <input type="checkbox" id="btn"/>
+  </body>
+</html>

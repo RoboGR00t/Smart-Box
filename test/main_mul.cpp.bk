@@ -1,0 +1,187 @@
+#include <Arduino.h>
+#include <WebSocketsServer.h>
+#include <ESP8266WebServer.h>
+#include <WiFiManager.h>
+
+
+int websockMillis = 50 ;
+
+ESP8266WebServer server(80);
+
+
+String webSite;
+
+/* NUMBER OF CONTROLED RELAYS */
+#define RELAYS 1
+/**/
+
+
+/* RELAY PINS */
+const int BUTTONS[RELAYS] = {0};
+/**/
+
+/* RELAY PINS VALUES AND INITIALIZE */
+boolean BUTTONS_VAL[RELAYS] = {true};
+/**/
+
+/* JSON OBJECT VARIABLE FOR EACH BUTTON */
+String JSON[RELAYS];
+/**/
+
+/* CREATE WEB SOCKET SERVER OBJECT*/
+WebSocketsServer webSocket = WebSocketsServer(88);
+/**/
+
+
+/*For WebSocket Communication
+* WebSocketsServer webSocket = WebSocketsServer(88); x
+* boolean LEDonoff = true; --> boolean BUTTONS_VAL[RELAYS] = {true};
+* JSONtxt --> JSON[RELAYS]
+* const int LED = 0; --> const int BUTTONS[RELAYS] = {0};
+*/
+
+const char webSiteCont[] PROGMEM =
+R"=====(
+
+  <!DOCTYPE html>
+  <html lang="en" dir="ltr">
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+      <title>Home.io</title>
+
+      <script>
+
+        InitWebSocket()
+        function InitWebSocket(){
+          websock = new WebSocket('ws://'+window.location.hostname+':88/');
+          websock.onmessage = function(evt){
+            JSONobj = JSON.parse(evt.data);
+            document.getElementById('btn').innerHTML = JSONobj.LEDonoff;
+
+            if(JSONobj.LEDonoff == 'ON'){
+              document.getElementById('btn').style.background = 'FFA200';
+            }
+            else{
+              document.getElementById('btn').style.background = 'FFA200';
+            }
+          } // end of onmessage
+        } // end off init
+
+        function button(){
+          btn = 'LEDonoff=ON';
+          if(document.getElementById('btn').innerHTML === 'ON'){
+            btn = 'LEDonoff=OFF';
+          }
+          websock.send(btn);
+        }
+
+      </script>
+
+    </head>
+    <body>
+      <h1> SMART BOX UNDER CONSTRACTION </h1>
+      <a href="#" id="btn" onclick='button()'></a>
+    </body>
+  </html>
+
+
+)=====";
+
+void WebSite(){
+
+  server.send(200, "text/html", webSiteCont);
+
+}
+
+void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t welength){
+
+  String payloadString = (const char *) payload;
+  Serial.print("payloadString = ");
+  Serial.println(payloadString);
+
+  if(type == WStype_TEXT){
+    byte separator = payloadString.indexOf('=');
+    String var = payloadString.substring(0,separator);
+    Serial.print("var = ");
+    Serial.println(var);
+    String val = payloadString.substring(separator+1);
+    Serial.print("val = ");
+    Serial.println(val);
+    Serial.println(" ");
+
+    if (var == "LEDonoff") {
+      BUTTONS_VAL[0] = false;
+      if(val == "ON") {
+        BUTTONS_VAL[0] = true;
+      }
+    }
+
+  }
+}
+
+void setup() {
+  Serial.begin(115200);
+
+  /* INITIALIZE ALL BUTTONS AS OUTPUTS */
+  for (unsigned int i = 0; i < RELAYS; i++) {
+    pinMode(BUTTONS[i], OUTPUT);
+  }
+  /**/
+
+  /* RESET WIFI PASSWORD */
+  // WiFi.disconnect();
+  delay(1000);
+  /**/
+
+  /* START WIFI MANAGER FOR CONNECTING TO WIFI*/
+  WiFiManager wifiManager;
+  wifiManager.autoConnect("Smart Box","Smart Box");
+  /**/
+
+/* PRINT LOCAL IP ADDRESS AND START WEB SERVER */
+  Serial.println("");
+  Serial.println("WIFI CONNECTED.");
+  Serial.print("IP ADDRESS: ");
+  Serial.println(WiFi.localIP());
+
+  WiFi.mode(WIFI_STA);
+  Serial.print(" START WEB SERVER ");
+  server.on("/",WebSite);
+  server.begin();
+  /**/
+
+  /* START WEB SOCKET SERVER */
+  webSocket.begin();
+  webSocket.onEvent(webSocketEvent);
+  /**/
+
+}
+
+
+void loop() {
+
+
+
+  for (unsigned int i = 0; i < RELAYS; i++) {
+
+    webSocket.loop();
+    server.handleClient();
+
+
+    if( BUTTONS_VAL[i] == true){
+      digitalWrite(BUTTONS[i], LOW);
+    }
+    else{
+      digitalWrite(BUTTONS[i],HIGH);
+    }
+
+    String JSON_PARAM = "OFF";
+
+    if(BUTTONS_VAL[i] == true) JSON_PARAM = "ON";
+    JSON[i] = "{\"LEDonoff\":\"" + JSON_PARAM + "\"}";
+    webSocket.broadcastTXT(JSON[i]);
+  }
+
+
+}
